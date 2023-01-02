@@ -55,11 +55,11 @@ spec:
             - --entrypoints.websecure.Address=:4443
             - --providers.kubernetescrd
             - --certificatesresolvers.myresolver.acme.tlschallenge
-            - --certificatesresolvers.myresolver.acme.email=foo@you.com
+            - --certificatesresolvers.myresolver.acme.email=janleskovec1@gmail.com
             - --certificatesresolvers.myresolver.acme.storage=acme.json
             # Please note that this is the staging Let's Encrypt server.
             # Once you get things working, you should remove that whole line altogether.
-            - --certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+            #- --certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
           ports:
             - name: web
               containerPort: 8000
@@ -84,7 +84,54 @@ spec:
       - "/api/v1/packets"
     #forceSlash: false
 ---
-
+#apiVersion: traefik.containo.us/v1alpha1
+#kind: IngressRoute
+#metadata:
+#  name: ingress
+#  namespace: default
+#spec:
+#  entryPoints:
+#    - web
+#  routes:
+#  - match: PathPrefix(`/api/v1/auth`)
+#    kind: Rule
+#    services:
+#    - name: app-auth
+#      port: 8080
+#    middlewares:
+#      - name: stripprefix
+#  - match: PathPrefix(`/api/v1/maps`)
+#    kind: Rule
+#    services:
+#    - name: app-maps
+#      port: 8080
+#    middlewares:
+#      - name: stripprefix
+#  - match: PathPrefix(`/api/v1/packets`)
+#    kind: Rule
+#    services:
+#    - name: app-packets
+#      port: 8080
+#    middlewares:
+#      - name: stripprefix
+#  - match: PathPrefix(`/api/v1/todo`)
+#    kind: Rule
+#    services:
+#    - name: app-todo-example
+#      port: 8080
+#    middlewares:
+#      - name: stripprefix
+#  - match: PathPrefix(`/grafana`)
+#    kind: Rule
+#    services:
+#    - name: grafana
+#      port: 3000
+#  - match: PathPrefix(`/`)
+#    kind: Rule
+#    services:
+#    - name: web-ui
+#      port: 80
+#---
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
@@ -92,7 +139,7 @@ metadata:
   namespace: default
 spec:
   entryPoints:
-    - web
+    - websecure
   routes:
   - match: PathPrefix(`/api/v1/auth`)
     kind: Rule
@@ -132,4 +179,6 @@ spec:
     services:
     - name: web-ui
       port: 80
+  tls:
+    certResolver: myresolver
 ---
