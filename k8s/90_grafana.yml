@@ -1,28 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    kompose.cmd: kompose convert
-    kompose.version: 1.27.0 (HEAD)
-  creationTimestamp: null
   labels:
-    io.kompose.service: grafana
+    app: grafana
   name: grafana
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: grafana
+      app: grafana
   strategy:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose convert
-        kompose.version: 1.27.0 (HEAD)
-      creationTimestamp: null
       labels:
-        io.kompose.service: grafana
+        app: grafana
     spec:
       containers:
         - env:
@@ -39,20 +31,35 @@ spec:
           resources: {}
           volumeMounts:
             - mountPath: /etc/grafana/provisioning/datasources/grafana_ds.yml
-              name: grafana-claim0
+              name: config-vol0
             - mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
-              name: grafana-claim1
+              name: config-vol1
             - mountPath: /etc/grafana/dashboards
-              name: grafana-claim2
+              name: config-vol2
       restartPolicy: Always
       volumes:
-        - name: grafana-claim0
-          persistentVolumeClaim:
-            claimName: grafana-claim0
-        - name: grafana-claim1
-          persistentVolumeClaim:
-            claimName: grafana-claim1
-        - name: grafana-claim2
-          persistentVolumeClaim:
-            claimName: grafana-claim2
+        - name: config-vol0
+          hostPath:
+            path: /data/grafana_ds.yml
+        - name: config-vol1
+          hostPath:
+            path: /data/grafana/dashboards.yaml
+        - name: config-vol2
+          hostPath:
+            path: /data/grafana/dashboards
 status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  ports:
+    - name: "3000"
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: grafana
+

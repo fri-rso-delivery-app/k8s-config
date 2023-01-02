@@ -13,7 +13,6 @@ spec:
     type: Recreate
   template:
     metadata:
-  
       labels:
         app: app-todo-example
     spec:

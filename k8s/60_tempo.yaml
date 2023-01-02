@@ -1,10 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app: tempo
   name: tempo
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  strategy:
+    type: Recreate
   template:
+    metadata:
+      labels:
+        app: tempo
     spec:
       containers:
         - args:
@@ -20,3 +30,18 @@ spec:
             - containerPort: 4317
           resources: {}
       restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+spec:
+  ports:
+    - name: "14250"
+      port: 14250
+      targetPort: 14250
+    - name: "4317"
+      port: 4317
+      targetPort: 4317
+  selector:
+    app: tempo
