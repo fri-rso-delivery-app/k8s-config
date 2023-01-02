@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - args:
+            - --target=all
+            - --storage.trace.backend=local
+            - --storage.trace.local.path=/var/tempo
+            - --auth.enabled=false
+            - --search.enabled=true
+          image: grafana/tempo:1.5.0
+          name: tempo
+          ports:
+            - containerPort: 14250
+            - containerPort: 4317
+          resources: {}
+      restartPolicy: Always

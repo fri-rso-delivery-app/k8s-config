@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-auth
+  name: app-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-auth
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+  
+      labels:
+        app: app-auth
+    spec:
+      containers:
+        - env:
+            - name: API_DB_NAME
+              value: auth_service
+            - name: API_HTTP_PORT
+              value: "8080"
+            - name: API_ROOT_PATH
+              value: /api/v1/auth
+            - name: API_TOKEN_EXPIRE_MIN
+              value: "60"
+          image: jl4318/delivery-auth:main
+          imagePullPolicy: Always
+          livenessProbe:
+            exec:
+              command:
+                - curl --fail http://localhost:8080/health || exit 1
+            failureThreshold: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+          name: app-auth
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/.env
+              name: host-env
+      restartPolicy: Always
+      volumes:
+        - name: host-env
+          hostPath:
+            path: /data/.env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-auth
+
+spec:
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8080
+  selector:
+    app: app-auth

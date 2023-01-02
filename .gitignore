@@ -1,0 +1,5 @@
+# local config
+.env
+
+# local data
+data/

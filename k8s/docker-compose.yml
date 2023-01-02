@@ -1,0 +1,158 @@
+version: '3.1'
+
+services:
+
+  # optional local database (change MONGO_URL to switch DB)
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD}"
+    
+    ports:
+      - 27017:27017
+    
+    volumes:
+      - ./data/mongo_db:/data/db
+  
+  #
+  # Mertics
+  #
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    #network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+  #logs
+  loki:
+    image: grafana/loki:2.6.1
+    ports:
+      - 3100:3100
+    command: -config.file=/mnt/loki/loki-config.yml
+    volumes:
+      - ./loki-config.yml:/mnt/loki/loki-config.yml
+  #traces
+  tempo:
+    image: grafana/tempo:1.5.0
+    command: [ "--target=all", "--storage.trace.backend=local", "--storage.trace.local.path=/var/tempo", "--auth.enabled=false", "--search.enabled=true" ]
+    ports:
+      - "14250:14250"
+      - "4317:4317" # for debugging
+    depends_on:
+      - loki
+  grafana:
+    image: grafana/grafana:9.1.7
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana_ds.yml:/etc/grafana/provisioning/datasources/grafana_ds.yml
+      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./grafana/dashboards:/etc/grafana/dashboards
+    depends_on:
+      - loki
+      - prometheus
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+  
+  #
+  # Microservices
+  #
+
+  # auth
+  app-auth:
+    image: jl4318/delivery-auth:main
+    restart: always
+    environment:
+      API_ROOT_PATH: "/api/v1/auth"
+      API_HTTP_PORT: "8080"
+      API_DB_NAME: "auth_service"
+      API_TOKEN_EXPIRE_MIN: "60"
+    volumes:
+      - "./.env:/app/.env"
+    healthcheck:
+      test: curl --fail http://localhost:8080/health || exit 1
+      interval: 30s
+      retries: 5
+      timeout: 10s
+  
+  # "todo" example microservice
+  app-todo-example:
+    image: jl4318/delivery-todo-example:main
+    restart: always
+    environment:
+      API_ROOT_PATH: "/api/v1/todo"
+      API_HTTP_PORT: "8080"
+      API_DB_NAME: "todo_service"
+    volumes:
+      - "./.env:/app/.env"
+    healthcheck:
+      test: curl --fail http://localhost:8080/health || exit 1
+      interval: 30s
+      retries: 5
+      timeout: 10s
+  
+  # maps distance
+  app-maps:
+    image: jl4318/delivery-maps-distance:main
+    restart: always
+    environment:
+      API_ROOT_PATH: "/api/v1/maps"
+      API_HTTP_PORT: "8080"
+      API_DB_NAME: "maps_service"
+    volumes:
+      - "./.env:/app/.env"
+    healthcheck:
+      test: curl --fail http://localhost:8080/health || exit 1
+      interval: 30s
+      retries: 5
+      timeout: 10s
+  
+  # packets tracking (main service)
+  app-packets:
+    image: jl4318/delivery-package:main
+    restart: always
+    environment:
+      API_ROOT_PATH: "/api/v1/packets"
+      API_HTTP_PORT: "8080"
+      API_DB_NAME: "packet_service"
+    volumes:
+      - "./.env:/app/.env"
+    healthcheck:
+      test: curl --fail http://localhost:8080/health || exit 1
+      interval: 30s
+      retries: 5
+      timeout: 10s
+  
+  # web UI
+  web-ui:
+    image: jl4318/delivery-web-ui:main
+    restart: always
+  
+  #
+  # Router
+  #
+  
+  router:
+    build: ./router/
+    restart: always
+    ports:
+        - "8080:80"
+    depends_on:
+        - web-ui
+        - app-auth
+        - app-todo-example
+        - app-maps

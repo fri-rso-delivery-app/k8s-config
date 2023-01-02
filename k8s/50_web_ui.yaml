@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web-ui
+  name: web-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-ui
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: web-ui
+    spec:
+      containers:
+        - image: jl4318/delivery-web-ui:main
+          imagePullPolicy: Always
+          name: web-ui
+          resources: {}
+      restartPolicy: Always
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-ui
+
+spec:
+  ports:
+    - protocol: TCP
+      name: web
+      port: 80
+  selector:
+    app: web-ui

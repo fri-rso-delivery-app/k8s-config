@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: app-maps
+  name: app-maps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-maps
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+  
+      labels:
+        app: app-maps
+    spec:
+      containers:
+        - env:
+            - name: API_DB_NAME
+              value: maps_service
+            - name: API_HTTP_PORT
+              value: "8080"
+            - name: API_ROOT_PATH
+              value: /api/v1/maps
+          image: jl4318/delivery-maps-distance:main
+          imagePullPolicy: Always
+          livenessProbe:
+            exec:
+              command:
+                - curl --fail http://localhost:8080/health || exit 1
+            failureThreshold: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+          name: app-maps
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/.env
+              name: host-env
+      restartPolicy: Always
+      volumes:
+        - name: host-env
+          hostPath:
+            path: /data/.env
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-maps
+
+spec:
+  ports:
+    - protocol: TCP
+      name: web
+      port: 8080
+  selector:
+    app: app-maps
