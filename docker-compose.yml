@@ -1,3 +1,14 @@
+x-logging: &default-logging
+  driver: loki
+  options:
+    loki-url: 'http://localhost:3100/api/prom/push'
+    loki-pipeline-stages: |
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}'
+          max_wait_time: 3s
+      - regex:
+          expression: '^(?P<time>\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2},d{3}) (?P<message>(?s:.*))$$'
+
 version: '3.1'
 
 services:
@@ -52,6 +63,7 @@ services:
       - "4317:4317" # for debugging
     depends_on:
       - loki
+    logging: *default-logging
   grafana:
     image: grafana/grafana:9.1.7
     ports:
@@ -67,6 +79,7 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    logging: *default-logging
   
   #
   # Microservices
@@ -74,72 +87,80 @@ services:
 
   # auth
   app-auth:
-    image: jl4318/delivery-auth:main
+    build: ./services/auth-service
     restart: always
     environment:
       API_ROOT_PATH: "/api/v1/auth"
       API_HTTP_PORT: "8080"
       API_DB_NAME: "auth_service"
       API_TOKEN_EXPIRE_MIN: "60"
+    logging: *default-logging
     volumes:
       - "./.env:/app/.env"
     healthcheck:
       test: curl --fail http://localhost:8080/health || exit 1
       interval: 30s
       retries: 5
+      start_period: 20s
       timeout: 10s
   
   # "todo" example microservice
   app-todo-example:
-    image: jl4318/delivery-todo-example:main
+    build: ./services/todo-example-microservice
     restart: always
     environment:
       API_ROOT_PATH: "/api/v1/todo"
       API_HTTP_PORT: "8080"
       API_DB_NAME: "todo_service"
+    logging: *default-logging
     volumes:
       - "./.env:/app/.env"
     healthcheck:
       test: curl --fail http://localhost:8080/health || exit 1
       interval: 30s
       retries: 5
+      start_period: 20s
       timeout: 10s
   
   # maps distance
   app-maps:
-    image: jl4318/delivery-maps-distance:main
+    build: ./services/maps-distance-service
     restart: always
     environment:
       API_ROOT_PATH: "/api/v1/maps"
       API_HTTP_PORT: "8080"
       API_DB_NAME: "maps_service"
+    logging: *default-logging
     volumes:
       - "./.env:/app/.env"
     healthcheck:
       test: curl --fail http://localhost:8080/health || exit 1
       interval: 30s
       retries: 5
+      start_period: 20s
       timeout: 10s
   
   # packets tracking (main service)
   app-packets:
-    image: jl4318/delivery-package:main
+    build: ./services/packets-service
     restart: always
     environment:
       API_ROOT_PATH: "/api/v1/packets"
       API_HTTP_PORT: "8080"
       API_DB_NAME: "packet_service"
+    logging: *default-logging
     volumes:
       - "./.env:/app/.env"
     healthcheck:
       test: curl --fail http://localhost:8080/health || exit 1
       interval: 30s
       retries: 5
+      start_period: 20s
       timeout: 10s
   
   # web UI
   web-ui:
-    image: jl4318/delivery-web-ui:main
+    build: ./services/web-ui
     restart: always
   
   #
